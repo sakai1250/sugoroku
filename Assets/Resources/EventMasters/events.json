@@ -1,0 +1,56 @@
+{
+  "Events": [
+    {
+      "EventId": "E001",
+      "Title": "国際学会の案内",
+      "Description": "ハワイでの国際学会。旅費は自腹だが、採択されれば研究実績は大きい。",
+      "Tags": ["学会"],
+      "Choices": [
+        { "Label": "自腹で参加", "MoneyDelta": -50, "MentalDelta": -20, "IfDelta": 5 },
+        { "Label": "今回は見送る" },
+        { "Label": "課金で遠征を整える", "RequiredMoney": 25, "MoneyDelta": -25, "IfDelta": 4, "RequiresKind": true, "RequiredKind": 3 }
+      ]
+    },
+    {
+      "EventId": "E002",
+      "Title": "深夜の論文添削",
+      "Description": "指導教員から深夜に大量のコメントが届いた。明日の朝までに直せるだろうか。",
+      "Tags": ["教授"],
+      "Choices": [
+        { "Label": "朝まで対応する", "MentalDelta": -30, "IfDelta": 2, "VirtueDelta": 5 },
+        { "Label": "寝る", "MentalDelta": 10, "VirtueDelta": -10 }
+      ]
+    },
+    {
+      "EventId": "E003",
+      "Title": "シフトの穴埋め",
+      "Description": "バイト先から急な連勤依頼。財布は助かるが、研究室に戻る気力は削られる。",
+      "Tags": ["バイト"],
+      "Choices": [
+        { "Label": "連勤で稼ぐ", "MoneyDelta": 40, "MentalDelta": -20, "AddSkipTurn": true },
+        { "Label": "断る" }
+      ]
+    },
+    {
+      "EventId": "E004",
+      "Title": "経費精算トラブル",
+      "Description": "提出書類の不備で経費が止まった。締切まで時間がない。",
+      "Tags": ["事務"],
+      "Choices": [
+        { "Label": "自力で徹夜で直す", "MentalDelta": -15 },
+        { "Label": "秘書さんに泣きつく", "RequiredVirtue": 15, "VirtueDelta": -15 },
+        { "Label": "課金で丸ごと解決", "RequiredMoney": 20, "MoneyDelta": -20, "RequiresKind": true, "RequiredKind": 3 }
+      ]
+    },
+    {
+      "EventId": "E005",
+      "Title": "TA",
+      "Description": "学部生の演習担当。きちんと見るほど信頼は増えるが、時間と気力は削られる。",
+      "Tags": ["講義"],
+      "Choices": [
+        { "Label": "真面目に教える", "MoneyDelta": 10, "MentalDelta": -10, "VirtueDelta": 3 },
+        { "Label": "適当に自習させる", "MoneyDelta": 10, "VirtueDelta": -5 }
+      ]
+    }
+  ]
+}

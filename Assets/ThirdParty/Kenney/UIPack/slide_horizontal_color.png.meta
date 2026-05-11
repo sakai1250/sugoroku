@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: b666c1ff5f67f488abad5f759b5e156e
+guid: 12b462bd63baf43e4918d2daf88992da
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4695289327386910235
-    second: dice4_0
+      213: -9083129648240841659
+    second: slide_horizontal_color_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: dice4_0
+      name: slide_horizontal_color_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 68
-        height: 68
+        width: 96
+        height: 16
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5e1ab63cb3bf6deb0800000000000000
-      internalID: -4695289327386910235
+      spriteID: 54c29cb95bd32f180800000000000000
+      internalID: -9083129648240841659
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      dice4_0: -4695289327386910235
+      slide_horizontal_color_0: -9083129648240841659
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

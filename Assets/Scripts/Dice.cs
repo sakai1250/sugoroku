@@ -8,8 +8,8 @@ public class Dice : MonoBehaviour
     private Sprite[] diceSides;      // サイコロの各面のスプライト
     private SpriteRenderer rend;     // 表示用のSpriteRenderer
 
-    private int whosTurn = 1;         // 1はプレイヤー1のターン、-1はプレイヤー2のターン
     private bool coroutineAllowed = true; // 他のサイコロ処理中はクリック不能
+    private bool cpuRollQueued;
 
     private void Start()
     {
@@ -34,6 +34,12 @@ public class Dice : MonoBehaviour
 
     private void Update()
     {
+        if (coroutineAllowed && !cpuRollQueued && GameControl.CanAutoRoll())
+        {
+            StartCoroutine(RollForCpu());
+            return;
+        }
+
         if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame)
         {
             return;
@@ -49,16 +55,36 @@ public class Dice : MonoBehaviour
         var hit = Physics2D.OverlapPoint(worldPoint);
 
         // ゲームオーバーでなく、サイコロ自身がクリックされた場合のみ処理
-        if (hit != null && hit.gameObject == gameObject && !GameControl.gameOver && coroutineAllowed)
+        if (hit != null && hit.gameObject == gameObject && coroutineAllowed && GameControl.CanRoll())
         {
             Debug.Log("Dice clicked");
             StartCoroutine(RollTheDice());
         }
     }
 
+    private IEnumerator RollForCpu()
+    {
+        cpuRollQueued = true;
+        yield return new WaitForSeconds(0.65f);
+
+        if (coroutineAllowed && GameControl.CanAutoRoll())
+        {
+            yield return RollTheDice();
+        }
+
+        cpuRollQueued = false;
+    }
+
     private IEnumerator RollTheDice()
     {
         coroutineAllowed = false;
+        var currentPlayer = GameControl.GetCurrentPlayerNumber();
+        if (GameControl.ConsumeSkipTurn(currentPlayer))
+        {
+            coroutineAllowed = true;
+            yield break;
+        }
+
         int randomDiceSide = 0;
 
         // サイコロの面を高速で切り替えてアニメーションを演出
@@ -73,18 +99,9 @@ public class Dice : MonoBehaviour
         GameControl.diceSideThrown = randomDiceSide + 1;
         Debug.Log("Dice: " + GameControl.diceSideThrown);
 
-        // 出目に基づいて移動するプレイヤを決定
-        if (whosTurn == 1)
-        {
-            GameControl.MovePlayer(1);
-        }
-        else if (whosTurn == -1)
-        {
-            GameControl.MovePlayer(2);
-        }
+        // 出目に基づいて現在のプレイヤを移動
+        GameControl.MovePlayer(currentPlayer);
 
-        // 次の番を反転
-        whosTurn *= -1;
         coroutineAllowed = true;
     }
 }
