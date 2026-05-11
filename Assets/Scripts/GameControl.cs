@@ -24,11 +24,18 @@ public class GameControl : MonoBehaviour
     private static Button skillButton;
     private static Text skillButtonText;
     private static Text resultSummaryText;
+    private static readonly Text[] resultRankTexts = new Text[MaxPlayers];
+    private static readonly Text[] resultCareerTexts = new Text[MaxPlayers];
+    private static readonly Text[] resultScoreTexts = new Text[MaxPlayers];
+    private static readonly Image[] resultPortraitImages = new Image[MaxPlayers];
+    private static readonly GameObject[] resultCardObjects = new GameObject[MaxPlayers];
+    private static readonly Sprite[] characterPortraits = new Sprite[5];
     private static Text settingsVolumeText;
     private static Text settingsPlayersText;
     private static Text settingsCpuText;
     private static Text achievementsText;
     private static GameObject eventModalPanel;
+    private static Image eventModalPortraitImage;
     private static Text eventModalTitleText;
     private static Text eventModalDescriptionText;
     private static readonly Button[] eventChoiceButtons = new Button[3];
@@ -65,6 +72,7 @@ public class GameControl : MonoBehaviour
         pendingEvent = null;
         pendingEventSquare = 0;
 
+        LoadCharacterPortraits();
         whoWinsText = GameObject.Find("WhoWinsText");
         winnerPanel = GameObject.Find("WinnerPanel");
         titlePanel = GameObject.Find("TitlePanel");
@@ -80,11 +88,22 @@ public class GameControl : MonoBehaviour
         skillButton = skillButtonObject == null ? null : skillButtonObject.GetComponent<Button>();
         skillButtonText = FindText("SkillButtonText");
         resultSummaryText = FindText("ResultSummaryText");
+        for (var i = 0; i < MaxPlayers; i++)
+        {
+            var cardNumber = i + 1;
+            resultRankTexts[i] = FindText($"ResultP{cardNumber}RankText");
+            resultCareerTexts[i] = FindText($"ResultP{cardNumber}CareerText");
+            resultScoreTexts[i] = FindText($"ResultP{cardNumber}ScoreText");
+            resultPortraitImages[i] = FindImage($"ResultP{cardNumber}PortraitImage");
+            resultCardObjects[i] = GameObject.Find($"ResultP{cardNumber}Card");
+        }
+
         settingsVolumeText = FindText("SettingsVolumeText");
         settingsPlayersText = FindText("SettingsPlayersText");
         settingsCpuText = FindText("SettingsCpuText");
         achievementsText = FindText("AchievementsText");
         eventModalPanel = GameObject.Find("EventModalPanel");
+        eventModalPortraitImage = FindImage("EventModalPortraitImage");
         eventModalTitleText = FindText("EventModalTitleText");
         eventModalDescriptionText = FindText("EventModalDescriptionText");
 
@@ -171,6 +190,7 @@ public class GameControl : MonoBehaviour
                 VirtueText = FindText($"Player{playerNumber}VirtueText"),
                 PositionText = FindText($"Player{playerNumber}PositionText"),
                 PanelImage = FindImage($"Player{playerNumber}Panel"),
+                PortraitImage = FindImage($"Player{playerNumber}PortraitImage"),
                 ProgressFill = FindImage($"Player{playerNumber}ProgressFill"),
                 TurnTextObject = GameObject.Find($"Player{playerNumber}MoveText")
             };
@@ -209,6 +229,21 @@ public class GameControl : MonoBehaviour
 
             FinalizeTurnAfterSquare(player);
         }
+    }
+
+    private static void LoadCharacterPortraits()
+    {
+        characterPortraits[(int)GradStudentKind.Hobby] = Resources.Load<Sprite>("CharacterPortraits/Grad_Hobby");
+        characterPortraits[(int)GradStudentKind.Serious] = Resources.Load<Sprite>("CharacterPortraits/Grad_Serious");
+        characterPortraits[(int)GradStudentKind.Athletic] = Resources.Load<Sprite>("CharacterPortraits/Grad_Athletic");
+        characterPortraits[(int)GradStudentKind.Rich] = Resources.Load<Sprite>("CharacterPortraits/Grad_Rich");
+        characterPortraits[(int)GradStudentKind.Genius] = Resources.Load<Sprite>("CharacterPortraits/Grad_Genius");
+    }
+
+    private static Sprite GetCharacterPortrait(GradStudentKind kind)
+    {
+        var index = (int)kind;
+        return index >= 0 && index < characterPortraits.Length ? characterPortraits[index] : null;
     }
 
     public static bool CanRoll()
@@ -449,9 +484,21 @@ public class GameControl : MonoBehaviour
 
     private static void SetPanel(GameObject panel, bool active)
     {
-        if (panel != null)
+        if (panel == null)
         {
-            panel.SetActive(active);
+            return;
+        }
+
+        if (!active)
+        {
+            panel.SetActive(false);
+            return;
+        }
+
+        panel.SetActive(true);
+        if (instance != null)
+        {
+            instance.StartCoroutine(AnimatePanelIn(panel, 0.18f, 0.96f));
         }
     }
 
@@ -899,6 +946,16 @@ public class GameControl : MonoBehaviour
         if (eventModalPanel != null)
         {
             eventModalPanel.SetActive(true);
+            if (instance != null)
+            {
+                instance.StartCoroutine(AnimatePanelIn(eventModalPanel, 0.2f, 0.9f));
+            }
+        }
+
+        if (eventModalPortraitImage != null)
+        {
+            eventModalPortraitImage.sprite = GetCharacterPortrait(player.State.Kind);
+            eventModalPortraitImage.color = new Color32(255, 255, 255, 255);
         }
 
         if (eventModalTitleText != null)
@@ -1086,6 +1143,10 @@ public class GameControl : MonoBehaviour
         if (winnerPanel != null)
         {
             winnerPanel.SetActive(true);
+            if (instance != null)
+            {
+                instance.StartCoroutine(AnimatePanelIn(winnerPanel, 0.24f, 0.92f));
+            }
         }
 
         if (whoWinsText != null)
@@ -1124,6 +1185,12 @@ public class GameControl : MonoBehaviour
             }
         }
 
+        PopulateResultCards();
+        if (instance != null)
+        {
+            instance.StartCoroutine(RevealResultCards());
+        }
+
         if (rollStateText != null)
         {
             rollStateText.text = "DONE";
@@ -1147,6 +1214,98 @@ public class GameControl : MonoBehaviour
             }
 
             yield return new WaitForSeconds(0.12f);
+        }
+    }
+
+    private static IEnumerator RevealResultCards()
+    {
+        for (var i = 0; i < MaxPlayers; i++)
+        {
+            var card = resultCardObjects[i];
+            if (card == null || !card.activeInHierarchy)
+            {
+                continue;
+            }
+
+            yield return AnimatePanelIn(card, 0.18f, 0.86f);
+            yield return new WaitForSeconds(0.05f);
+        }
+    }
+
+    private static IEnumerator AnimatePanelIn(GameObject panel, float duration, float startScale)
+    {
+        if (panel == null)
+        {
+            yield break;
+        }
+
+        var rect = panel.GetComponent<RectTransform>();
+        if (rect == null)
+        {
+            yield break;
+        }
+
+        var canvasGroup = panel.GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = panel.AddComponent<CanvasGroup>();
+        }
+
+        var elapsed = 0f;
+        rect.localScale = Vector3.one * startScale;
+        canvasGroup.alpha = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            var eased = 1f - Mathf.Pow(1f - t, 3f);
+            var overshoot = Mathf.Sin(t * Mathf.PI) * 0.035f;
+            rect.localScale = Vector3.one * (Mathf.Lerp(startScale, 1f, eased) + overshoot);
+            canvasGroup.alpha = eased;
+            yield return null;
+        }
+
+        rect.localScale = Vector3.one;
+        canvasGroup.alpha = 1f;
+    }
+
+    private static void PopulateResultCards()
+    {
+        var rankedPlayers = BuildRankedPlayers();
+        for (var i = 0; i < MaxPlayers; i++)
+        {
+            var player = i < rankedPlayers.Length ? rankedPlayers[i] : null;
+            if (resultRankTexts[i] != null)
+            {
+                resultRankTexts[i].text = player == null ? string.Empty : $"{i + 1}位  P{player.Number}";
+                resultRankTexts[i].color = player == null ? new Color32(100, 116, 139, 255) : GetPlayerColor(player.Number);
+            }
+
+            if (resultCareerTexts[i] != null)
+            {
+                resultCareerTexts[i].text = player == null ? string.Empty : GetCareerName(player);
+            }
+
+            if (resultScoreTexts[i] != null)
+            {
+                resultScoreTexts[i].text = player == null
+                    ? string.Empty
+                    : $"Score {CalculateScore(player.State)}   金{player.State.Money} IF{player.State.IfScore} 心{player.State.Mental} 徳{player.State.Virtue}";
+            }
+
+            if (resultPortraitImages[i] != null)
+            {
+                resultPortraitImages[i].sprite = player == null ? null : GetCharacterPortrait(player.State.Kind);
+                resultPortraitImages[i].color = player == null
+                    ? new Color32(255, 255, 255, 0)
+                    : new Color32(255, 255, 255, 255);
+            }
+
+            if (resultCardObjects[i] != null)
+            {
+                resultCardObjects[i].SetActive(player != null);
+            }
         }
     }
 
@@ -1284,6 +1443,14 @@ public class GameControl : MonoBehaviour
             player.PositionText.text = $"{position}/{length}";
         }
 
+        if (player.PortraitImage != null)
+        {
+            player.PortraitImage.sprite = GetCharacterPortrait(player.State.Kind);
+            player.PortraitImage.color = player.Eliminated
+                ? new Color32(148, 163, 184, 180)
+                : new Color32(255, 255, 255, 255);
+        }
+
         if (player.ProgressFill != null)
         {
             player.ProgressFill.fillAmount = GetProgress(position, length);
@@ -1393,6 +1560,29 @@ public class GameControl : MonoBehaviour
     private static string BuildDetailedResultSummary()
     {
         var builder = new StringBuilder();
+        var rankedPlayers = BuildRankedPlayers();
+        for (var i = 0; i < rankedPlayers.Length; i++)
+        {
+            var player = rankedPlayers[i];
+            builder.AppendLine($"{i + 1}位  P{player.Number} {player.State.TypeName}  {GetCareerName(player)}");
+            builder.AppendLine($"Score {CalculateScore(player.State)}   金 {player.State.Money} / IF {player.State.IfScore} / 心 {player.State.Mental} / 徳 {player.State.Virtue}");
+            if (!string.IsNullOrEmpty(player.EliminationReason))
+            {
+                builder.AppendLine($"理由: {player.EliminationReason}");
+            }
+
+            if (i < rankedPlayers.Length - 1)
+            {
+                builder.AppendLine();
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static PlayerRuntime[] BuildRankedPlayers()
+    {
+        var rankedPlayers = new PlayerRuntime[activePlayerCount];
         var ranked = new bool[activePlayerCount];
 
         for (var rank = 1; rank <= activePlayerCount; rank++)
@@ -1420,21 +1610,10 @@ public class GameControl : MonoBehaviour
             }
 
             ranked[bestIndex] = true;
-            var player = players[bestIndex];
-            builder.AppendLine($"{rank}位  P{player.Number} {player.State.TypeName}  {GetCareerName(player)}");
-            builder.AppendLine($"Score {CalculateScore(player.State)}   金 {player.State.Money} / IF {player.State.IfScore} / 心 {player.State.Mental} / 徳 {player.State.Virtue}");
-            if (!string.IsNullOrEmpty(player.EliminationReason))
-            {
-                builder.AppendLine($"理由: {player.EliminationReason}");
-            }
-
-            if (rank < activePlayerCount)
-            {
-                builder.AppendLine();
-            }
+            rankedPlayers[rank - 1] = players[bestIndex];
         }
 
-        return builder.ToString();
+        return rankedPlayers;
     }
 
     private static string GetCareerName(PlayerRuntime player)
@@ -1777,6 +1956,7 @@ public class GameControl : MonoBehaviour
         public Text VirtueText;
         public Text PositionText;
         public Image PanelImage;
+        public Image PortraitImage;
         public Image ProgressFill;
         public GameObject TurnTextObject;
     }

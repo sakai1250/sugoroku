@@ -7,12 +7,14 @@ public class Dice : MonoBehaviour
 {
     private Sprite[] diceSides;      // サイコロの各面のスプライト
     private SpriteRenderer rend;     // 表示用のSpriteRenderer
+    private Vector3 baseScale;
 
     private bool coroutineAllowed = true; // 他のサイコロ処理中はクリック不能
     private bool cpuRollQueued;
 
     private void Start()
     {
+        baseScale = transform.localScale;
         rend = GetComponent<SpriteRenderer>();
         if (GetComponent<Collider2D>() == null)
         {
@@ -92,7 +94,19 @@ public class Dice : MonoBehaviour
         {
             randomDiceSide = Random.Range(0, 6);
             rend.sprite = diceSides[randomDiceSide];
+            var t = i / 20f;
+            var pulse = Mathf.Sin(t * Mathf.PI);
+            transform.localScale = baseScale * (1f + pulse * 0.22f);
+            transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(-18f, 378f, t));
             yield return new WaitForSeconds(0.05f);
+        }
+
+        for (var i = 0; i < 8; i++)
+        {
+            var t = (i + 1f) / 8f;
+            transform.localScale = Vector3.Lerp(baseScale * 1.12f, baseScale, t);
+            transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.identity, t);
+            yield return new WaitForSeconds(0.02f);
         }
 
         // 出目（0～5）は1～6に変換してGameControlへ渡す
