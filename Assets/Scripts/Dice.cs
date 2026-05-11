@@ -19,8 +19,12 @@ public class Dice : MonoBehaviour
             gameObject.AddComponent<BoxCollider2D>();
         }
 
-        // Resources/DiceSides 配下に配置したサイコロ面の画像を読み込む。
-        diceSides = Resources.LoadAll<Sprite>("DiceSides/");
+        // Kenneyの無料CC0素材を優先し、無い場合は元のサイコロ画像を使う。
+        diceSides = Resources.LoadAll<Sprite>("KenneyDice/");
+        if (diceSides.Length == 0)
+        {
+            diceSides = Resources.LoadAll<Sprite>("DiceSides/");
+        }
         // 初期表示として6の目を設定
         if (diceSides.Length > 5)
         {
