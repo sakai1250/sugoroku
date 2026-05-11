@@ -16,6 +16,11 @@ public static class CreateSugorokuScene
     [MenuItem("Tools/Create Sugoroku Scene")]
     public static void Run()
     {
+        if (EditorApplication.isPlaying)
+        {
+            EditorUtility.DisplayDialog("エラー", "プレイモード中はシーンの再生成を実行できません。プレイモードを終了してから再度お試しください。", "OK");
+            return;
+        }
         Directory.CreateDirectory("Assets/Scenes");
         Directory.CreateDirectory("Assets/Generated");
 
@@ -576,21 +581,25 @@ public static class CreateSugorokuScene
         scaler.matchWidthOrHeight = 0.5f;
         canvas.AddComponent<GraphicRaycaster>();
 
-        CreatePanel(canvas.transform, "TopBar", panelSprite, new Vector2(0f, 234f), new Vector2(960f, 72f), new Color32(17, 24, 39, 255));
-        CreateText(canvas.transform, "TitleText", "大学院生すごろく", new Vector2(-350f, 236f), new Vector2(260f, 36f), 24, new Color32(255, 255, 255, 255), TextAnchor.MiddleLeft);
-        CreateText(canvas.transform, "TurnText", "Player 1's turn", new Vector2(0f, 236f), new Vector2(300f, 36f), 29, new Color32(96, 165, 250, 255), TextAnchor.MiddleCenter);
-        CreateText(canvas.transform, "DiceResultText", "Ready", new Vector2(360f, 236f), new Vector2(210f, 32f), 18, new Color32(226, 232, 240, 255), TextAnchor.MiddleRight);
-        CreateButton(canvas.transform, "PauseButton", "||", new Vector2(452f, 236f), new Vector2(46f, 36f), buttonSprite, new Color32(71, 85, 105, 255));
-        CreateText(canvas.transform, "EventLogText", "研究生活、開始。", new Vector2(0f, 195f), new Vector2(520f, 28f), 17, new Color32(30, 41, 59, 255), TextAnchor.MiddleCenter);
+        var topBar = CreatePanel(canvas.transform, "TopBar", panelSprite, new Vector2(0f, 234f), new Vector2(960f, 72f), new Color32(17, 24, 39, 255));
+        CreateText(topBar.transform, "TitleText", "大学院生すごろく", new Vector2(-350f, 2f), new Vector2(260f, 36f), 24, new Color32(255, 255, 255, 255), TextAnchor.MiddleLeft);
+        CreateText(topBar.transform, "TurnText", "Player 1's turn", new Vector2(0f, 2f), new Vector2(300f, 36f), 29, new Color32(96, 165, 250, 255), TextAnchor.MiddleCenter);
+        CreateText(topBar.transform, "DiceResultText", "Ready", new Vector2(360f, 2f), new Vector2(210f, 32f), 18, new Color32(226, 232, 240, 255), TextAnchor.MiddleRight);
+        CreateButton(topBar.transform, "PauseButton", "||", new Vector2(452f, 2f), new Vector2(46f, 36f), buttonSprite, new Color32(71, 85, 105, 255));
+        
+        CreateText(canvas.transform, "EventLogText", "研究生活、開始。", new Vector2(0f, 155f), new Vector2(520f, 28f), 17, new Color32(30, 41, 59, 255), TextAnchor.MiddleCenter);
 
-        CreatePlayerCard(canvas.transform, "Player1", new Vector2(-315f, -187f), new Color32(37, 99, 235, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
-        CreatePlayerCard(canvas.transform, "Player2", new Vector2(-105f, -187f), new Color32(220, 38, 38, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
-        CreatePlayerCard(canvas.transform, "Player3", new Vector2(105f, -187f), new Color32(22, 163, 74, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
-        CreatePlayerCard(canvas.transform, "Player4", new Vector2(315f, -187f), new Color32(147, 51, 234, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
+        var cardsContainer = new GameObject("PlayerCardsContainer");
+        cardsContainer.transform.SetParent(canvas.transform, false);
+        cardsContainer.AddComponent<RectTransform>().anchoredPosition = new Vector2(0f, -187f);
+        CreatePlayerCard(cardsContainer.transform, "Player1", new Vector2(-315f, 0f), new Color32(37, 99, 235, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
+        CreatePlayerCard(cardsContainer.transform, "Player2", new Vector2(-105f, 0f), new Color32(220, 38, 38, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
+        CreatePlayerCard(cardsContainer.transform, "Player3", new Vector2(105f, 0f), new Color32(22, 163, 74, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
+        CreatePlayerCard(cardsContainer.transform, "Player4", new Vector2(315f, 0f), new Color32(147, 51, 234, 255), panelSprite, progressTrackSprite, progressFillSprite, statIcons);
 
-        CreatePanel(canvas.transform, "DiceStatusPanel", panelSprite, new Vector2(0f, -252f), new Vector2(150f, 52f), new Color32(255, 255, 255, 240));
-        CreateText(canvas.transform, "DiceLabelText", "DICE", new Vector2(-48f, -252f), new Vector2(60f, 20f), 12, new Color32(100, 116, 139, 255), TextAnchor.MiddleCenter);
-        CreateText(canvas.transform, "RollStateText", "READY", new Vector2(32f, -252f), new Vector2(80f, 28f), 23, new Color32(15, 23, 42, 255), TextAnchor.MiddleCenter);
+        var dicePanel = CreatePanel(canvas.transform, "DiceStatusPanel", panelSprite, new Vector2(0f, -252f), new Vector2(150f, 52f), new Color32(255, 255, 255, 240));
+        CreateText(dicePanel.transform, "DiceLabelText", "DICE", new Vector2(-48f, 0f), new Vector2(60f, 20f), 12, new Color32(100, 116, 139, 255), TextAnchor.MiddleCenter);
+        CreateText(dicePanel.transform, "RollStateText", "READY", new Vector2(32f, 0f), new Vector2(80f, 28f), 23, new Color32(15, 23, 42, 255), TextAnchor.MiddleCenter);
         CreateButton(canvas.transform, "SkillButton", "一旦逃避", new Vector2(355f, -252f), new Vector2(160f, 44f), buttonSprite, new Color32(99, 102, 241, 255));
 
         var winnerPanel = CreatePanel(canvas.transform, "WinnerPanel", panelSprite, new Vector2(0f, 42f), new Vector2(680f, 344f), new Color32(255, 255, 255, 248));
@@ -601,10 +610,13 @@ public static class CreateSugorokuScene
         CreateResultCard(winnerPanel.transform, "ResultP3", new Vector2(-170f, -36f), new Color32(22, 163, 74, 255), panelSprite);
         CreateResultCard(winnerPanel.transform, "ResultP4", new Vector2(170f, -36f), new Color32(147, 51, 234, 255), panelSprite);
 
-        CreateText(canvas.transform, "Player1MoveText", "Player 1", new Vector2(-78f, 196f), new Vector2(120f, 28f), 17, new Color32(96, 165, 250, 255), TextAnchor.MiddleCenter);
-        CreateText(canvas.transform, "Player2MoveText", "Player 2", new Vector2(78f, 196f), new Vector2(120f, 28f), 17, new Color32(248, 113, 113, 255), TextAnchor.MiddleCenter);
-        CreateText(canvas.transform, "Player3MoveText", "Player 3", new Vector2(234f, 196f), new Vector2(120f, 28f), 17, new Color32(74, 222, 128, 255), TextAnchor.MiddleCenter);
-        CreateText(canvas.transform, "Player4MoveText", "Player 4", new Vector2(390f, 196f), new Vector2(120f, 28f), 17, new Color32(192, 132, 252, 255), TextAnchor.MiddleCenter);
+        var moveTextsContainer = new GameObject("PlayerMoveTextsContainer");
+        moveTextsContainer.transform.SetParent(canvas.transform, false);
+        moveTextsContainer.AddComponent<RectTransform>().anchoredPosition = new Vector2(0f, 196f);
+        CreateText(moveTextsContainer.transform, "Player1MoveText", "Player 1", new Vector2(-78f, 0f), new Vector2(120f, 28f), 17, new Color32(96, 165, 250, 255), TextAnchor.MiddleCenter);
+        CreateText(moveTextsContainer.transform, "Player2MoveText", "Player 2", new Vector2(78f, 0f), new Vector2(120f, 28f), 17, new Color32(248, 113, 113, 255), TextAnchor.MiddleCenter);
+        CreateText(moveTextsContainer.transform, "Player3MoveText", "Player 3", new Vector2(234f, 0f), new Vector2(120f, 28f), 17, new Color32(74, 222, 128, 255), TextAnchor.MiddleCenter);
+        CreateText(moveTextsContainer.transform, "Player4MoveText", "Player 4", new Vector2(390f, 0f), new Vector2(120f, 28f), 17, new Color32(192, 132, 252, 255), TextAnchor.MiddleCenter);
 
         CreateEventModal(canvas.transform, panelSprite, buttonSprite);
         CreateMenuScreens(canvas.transform, panelSprite, buttonSprite, characterPortraits);

@@ -491,7 +491,14 @@ public class GameControl : MonoBehaviour
 
         if (!active)
         {
-            panel.SetActive(false);
+            if (instance != null && panel.activeInHierarchy)
+            {
+                instance.StartCoroutine(AnimatePanelOut(panel, 0.15f, 0.96f));
+            }
+            else
+            {
+                panel.SetActive(false);
+            }
             return;
         }
 
@@ -680,8 +687,9 @@ public class GameControl : MonoBehaviour
             return false;
         }
 
-        var message = ApplySquareEvent(player.Number, player.State, square);
+        var message = ApplySquareEvent(player.Number, player.State, square, out var positive);
         WriteEvent(message);
+        TriggerEventBanner(message, positive);
         CheckPlayerFailure(player, square);
         return true;
     }
@@ -719,11 +727,12 @@ public class GameControl : MonoBehaviour
         CompleteTurn();
     }
 
-    private static string ApplySquareEvent(int playerNumber, GradStudentState state, int square)
+    private static string ApplySquareEvent(int playerNumber, GradStudentState state, int square, out bool positive)
     {
         if (state.IgnoreNextEvents > 0)
         {
             state.IgnoreNextEvents -= 1;
+            positive = true;
             return $"P{playerNumber}: 一旦逃避中 イベント回避";
         }
 
@@ -731,6 +740,7 @@ public class GameControl : MonoBehaviour
         {
             const int tuition = 25;
             state.Money -= tuition;
+            positive = false;
             return $"P{playerNumber}: 学費 -{tuition}万円";
         }
 
@@ -739,88 +749,104 @@ public class GameControl : MonoBehaviour
             case 2:
             case 8:
                 state.Mental = Mathf.Min(state.MaxMental, state.Mental + 12);
+                positive = true;
                 return $"P{playerNumber}: 趣味で回復 メンタル+12";
             case 3:
                 state.IfScore += 1;
                 state.Mental -= MentalDamage(state, 8);
+                positive = true;
                 return $"P{playerNumber}: 国内発表 IF+1 / メンタル減";
             case 4:
             case 13:
                 state.Virtue += 2;
                 state.Mental -= MentalDamage(state, 6);
+                positive = true;
                 return $"P{playerNumber}: 雑務対応 徳+2";
             case 6:
-                return LectureEvent(playerNumber, state);
+                return LectureEvent(playerNumber, state, out positive);
             case 7:
             case 16:
-                return EmergencyEvent(playerNumber, state);
+                return EmergencyEvent(playerNumber, state, out positive);
             case 9:
                 state.Money += 18;
                 state.Mental -= MentalDamage(state, 5);
+                positive = true;
                 return $"P{playerNumber}: TA給与 +18万円";
             case 11:
                 state.IfScore += JournalIfGain(state);
                 state.Mental -= MentalDamage(state, 14);
+                positive = true;
                 return $"P{playerNumber}: ジャーナル投稿";
             case 12:
                 state.Money += state.Virtue >= 3 ? 20 : 8;
+                positive = true;
                 return state.Virtue >= 3 ? $"P{playerNumber}: 徳で奢り +20万円" : $"P{playerNumber}: 先輩の差し入れ +8万円";
             case 14:
-                return PcTroubleEvent(playerNumber, state);
+                return PcTroubleEvent(playerNumber, state, out positive);
             case 17:
                 state.Money -= 10;
                 state.Mental -= MentalDamage(state, 10);
+                positive = false;
                 return $"P{playerNumber}: 就活移動費 -10万円 / メンタル減";
             case 18:
                 state.IfScore += 2;
                 state.Mental -= MentalDamage(state, 18);
+                positive = true;
                 return $"P{playerNumber}: 国際会議 IF+2";
             case 19:
                 state.Virtue += 4;
                 state.Mental = Mathf.Min(state.MaxMental, state.Mental + 6);
+                positive = true;
                 return $"P{playerNumber}: 後輩救済 徳+4 / メンタル+6";
             default:
                 if (state.Kind == GradStudentKind.Hobby && state.IgnoreNextEvents == 0)
                 {
                     state.IgnoreNextEvents = 2;
                     state.Mental = Mathf.Min(state.MaxMental, state.Mental + Mathf.CeilToInt(state.MaxMental * 0.1f));
+                    positive = true;
                     return $"P{playerNumber}: 趣味に逃避 次2回回避 / メンタル回復";
                 }
 
+                positive = true;
                 return $"P{playerNumber}: 研究室で平常運転";
         }
     }
 
-    private static string LectureEvent(int playerNumber, GradStudentState state)
+    private static string LectureEvent(int playerNumber, GradStudentState state, out bool positive)
     {
         if (state.Kind == GradStudentKind.Serious)
         {
             state.IfScore += 1;
+            positive = true;
             return $"P{playerNumber}: 講義を完璧に処理 IF+1";
         }
 
         state.Mental -= MentalDamage(state, 7);
+        positive = false;
         return $"P{playerNumber}: 講義課題 メンタル減";
     }
 
-    private static string EmergencyEvent(int playerNumber, GradStudentState state)
+    private static string EmergencyEvent(int playerNumber, GradStudentState state, out bool positive)
     {
         var damage = state.Kind == GradStudentKind.Serious ? 18 : 15;
         state.Mental -= MentalDamage(state, damage);
         state.Virtue += 1;
+        positive = false;
         return $"P{playerNumber}: 緊急対応 徳+1 / メンタル減";
     }
 
-    private static string PcTroubleEvent(int playerNumber, GradStudentState state)
+    private static string PcTroubleEvent(int playerNumber, GradStudentState state, out bool positive)
     {
         if (state.Kind == GradStudentKind.Rich && state.Money >= 20)
         {
             state.Money -= 20;
+            positive = true;
             return $"P{playerNumber}: 課金でPC復旧 -20万円";
         }
 
         state.Money -= 12;
         state.Mental -= MentalDamage(state, 12);
+        positive = false;
         return $"P{playerNumber}: PC故障 -12万円 / メンタル減";
     }
 
@@ -865,12 +891,308 @@ public class GameControl : MonoBehaviour
             player.State.Mental + Mathf.CeilToInt(player.State.MaxMental * 0.1f));
 
         WriteEvent($"P{player.Number}: 一旦逃避 次2回イベント回避 / メンタル回復");
+        ShowSkillPopup("固有スキル発動！\n「一旦逃避」");
         if (UiSoundPlayer.Instance != null)
         {
             UiSoundPlayer.Instance.PlayConfirm();
         }
 
         UpdateHud(diceResultText == null ? string.Empty : diceResultText.text);
+    }
+
+    private static void TriggerEventBanner(string message, bool positive)
+    {
+        if (instance == null) return;
+        var colonIdx = message.IndexOf(": ");
+        var displayText = colonIdx >= 0 ? message.Substring(colonIdx + 2) : message;
+        instance.StartCoroutine(AnimateEventBanner(displayText, positive));
+    }
+
+    private static IEnumerator AnimateEventBanner(string text, bool positive)
+    {
+        var canvas = Object.FindFirstObjectByType<Canvas>();
+        if (canvas == null) yield break;
+
+        var banner = new GameObject("EventBanner");
+        banner.transform.SetParent(canvas.transform, false);
+        var rect = banner.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.1f, 0f);
+        rect.anchorMax = new Vector2(0.9f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        rect.sizeDelta = new Vector2(0f, 72f);
+        rect.anchoredPosition = new Vector2(0f, -80f);
+
+        var bg = banner.AddComponent<Image>();
+        bg.color = positive ? new Color32(20, 83, 45, 235) : new Color32(127, 29, 29, 235);
+
+        var accent = new GameObject("Accent");
+        accent.transform.SetParent(banner.transform, false);
+        var accentRect = accent.AddComponent<RectTransform>();
+        accentRect.anchorMin = new Vector2(0f, 0f);
+        accentRect.anchorMax = new Vector2(0f, 1f);
+        accentRect.pivot = new Vector2(0f, 0.5f);
+        accentRect.sizeDelta = new Vector2(6f, 0f);
+        accentRect.anchoredPosition = Vector2.zero;
+        var accentImg = accent.AddComponent<Image>();
+        accentImg.color = positive ? new Color32(74, 222, 128, 255) : new Color32(248, 113, 113, 255);
+
+        var textObj = new GameObject("Text");
+        textObj.transform.SetParent(banner.transform, false);
+        var textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(18f, 0f);
+        textRect.offsetMax = Vector2.zero;
+        var uiText = textObj.AddComponent<Text>();
+        uiText.text = text;
+        uiText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        uiText.fontSize = 26;
+        uiText.fontStyle = FontStyle.Bold;
+        uiText.color = Color.white;
+        uiText.alignment = TextAnchor.MiddleLeft;
+
+        var cg = banner.AddComponent<CanvasGroup>();
+        cg.alpha = 0f;
+
+        const float slideTime = 0.2f;
+        var elapsed = 0f;
+        while (elapsed < slideTime)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = 1f - Mathf.Pow(1f - Mathf.Clamp01(elapsed / slideTime), 3f);
+            rect.anchoredPosition = new Vector2(0f, Mathf.Lerp(-80f, 24f, t));
+            cg.alpha = t;
+            yield return null;
+        }
+        rect.anchoredPosition = new Vector2(0f, 24f);
+        cg.alpha = 1f;
+
+        yield return new WaitForSecondsRealtime(1.4f);
+
+        elapsed = 0f;
+        while (elapsed < slideTime)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = Mathf.Clamp01(elapsed / slideTime);
+            rect.anchoredPosition = new Vector2(0f, Mathf.Lerp(24f, -80f, t * t));
+            cg.alpha = 1f - t;
+            yield return null;
+        }
+
+        Object.Destroy(banner);
+    }
+
+    private static void TriggerChoiceStatDeltas(EventChoice choice)
+    {
+        if (instance == null) return;
+        var deltas = new System.Collections.Generic.List<(string label, int value)>();
+        if (choice.MoneyDelta != 0) deltas.Add(("金", choice.MoneyDelta));
+        if (choice.MentalDelta != 0) deltas.Add(("心", choice.MentalDelta));
+        if (choice.IfDelta != 0) deltas.Add(("IF", choice.IfDelta));
+        if (choice.VirtueDelta != 0) deltas.Add(("徳", choice.VirtueDelta));
+        if (choice.AddSkipTurn) deltas.Add(("休み", -1));
+        if (deltas.Count > 0)
+        {
+            instance.StartCoroutine(AnimateStatDeltas(deltas));
+        }
+    }
+
+    private static IEnumerator AnimateStatDeltas(System.Collections.Generic.List<(string label, int value)> deltas)
+    {
+        var canvas = Object.FindFirstObjectByType<Canvas>();
+        if (canvas == null) yield break;
+
+        for (var i = 0; i < deltas.Count; i++)
+        {
+            var (label, value) = deltas[i];
+            var isSpecial = label == "休み";
+            var positive = isSpecial ? false : value > 0;
+            var sign = (!isSpecial && value > 0) ? "+" : "";
+            var displayText = isSpecial ? "1回休み" : $"{label}{sign}{value}";
+
+            var floater = new GameObject("StatDelta");
+            floater.transform.SetParent(canvas.transform, false);
+            var rect = floater.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(160f, 48f);
+            rect.anchoredPosition = new Vector2(-80f + i * 90f, 60f);
+
+            var cg = floater.AddComponent<CanvasGroup>();
+            cg.alpha = 0f;
+
+            var textObj = new GameObject("Text");
+            textObj.transform.SetParent(floater.transform, false);
+            var textRect = textObj.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            var uiText = textObj.AddComponent<Text>();
+            uiText.text = displayText;
+            uiText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            uiText.fontSize = 32;
+            uiText.fontStyle = FontStyle.Bold;
+            uiText.color = positive ? new Color32(74, 222, 128, 255) : new Color32(248, 113, 113, 255);
+            uiText.alignment = TextAnchor.MiddleCenter;
+
+            instance.StartCoroutine(FloatAndFade(floater, rect, cg));
+            yield return new WaitForSecondsRealtime(0.1f);
+        }
+    }
+
+    private static IEnumerator FloatAndFade(GameObject obj, RectTransform rect, CanvasGroup cg)
+    {
+        var startY = rect.anchoredPosition.y;
+        const float duration = 1.1f;
+        var elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = elapsed / duration;
+            rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, startY + t * 80f);
+            cg.alpha = t < 0.2f ? t / 0.2f : 1f - (t - 0.2f) / 0.8f;
+            yield return null;
+        }
+        Object.Destroy(obj);
+    }
+
+    private static void ShowSkillPopup(string text)
+    {
+        var canvas = Object.FindFirstObjectByType<Canvas>();
+        if (canvas == null) return;
+        if (instance != null)
+        {
+            instance.StartCoroutine(AnimateSkillCutIn(canvas, text));
+        }
+    }
+
+    private static IEnumerator AnimateSkillCutIn(Canvas canvas, string skillName)
+    {
+        // 半透明オーバーレイ
+        var overlay = new GameObject("CutInOverlay");
+        overlay.transform.SetParent(canvas.transform, false);
+        var overlayRect = overlay.AddComponent<RectTransform>();
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+        var overlayImg = overlay.AddComponent<Image>();
+        overlayImg.color = new Color(0f, 0f, 0f, 0f);
+
+        // 斜めスラッシュパネル（左から）
+        var slashLeft = CreateCutInSlash(canvas, new Color32(37, 99, 235, 230), -1f);
+        // 斜めスラッシュパネル（右から）
+        var slashRight = CreateCutInSlash(canvas, new Color32(15, 23, 42, 210), 1f);
+
+        // テキスト
+        var textObj = new GameObject("CutInText");
+        textObj.transform.SetParent(canvas.transform, false);
+        var textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0f, 0.5f);
+        textRect.anchorMax = new Vector2(1f, 0.5f);
+        textRect.sizeDelta = new Vector2(0f, 120f);
+        textRect.anchoredPosition = Vector2.zero;
+        var cg = textObj.AddComponent<CanvasGroup>();
+        cg.alpha = 0f;
+
+        var label = new GameObject("Label");
+        label.transform.SetParent(textObj.transform, false);
+        var labelRect = label.AddComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+        var uiText = label.AddComponent<Text>();
+        uiText.text = skillName;
+        uiText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        uiText.fontSize = 52;
+        uiText.fontStyle = FontStyle.Bold;
+        uiText.color = Color.white;
+        uiText.alignment = TextAnchor.MiddleCenter;
+
+        var shadowObj = new GameObject("Shadow");
+        shadowObj.transform.SetParent(textObj.transform, false);
+        var shadowRect = shadowObj.AddComponent<RectTransform>();
+        shadowRect.anchorMin = Vector2.zero;
+        shadowRect.anchorMax = Vector2.one;
+        shadowRect.offsetMin = new Vector2(3f, -3f);
+        shadowRect.offsetMax = new Vector2(3f, -3f);
+        var shadowText = shadowObj.AddComponent<Text>();
+        shadowText.text = skillName;
+        shadowText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        shadowText.fontSize = 52;
+        shadowText.fontStyle = FontStyle.Bold;
+        shadowText.color = new Color32(37, 99, 235, 180);
+        shadowText.alignment = TextAnchor.MiddleCenter;
+        shadowObj.transform.SetAsFirstSibling();
+
+        // スラッシュスライドイン
+        const float slideIn = 0.18f;
+        var elapsed = 0f;
+        var leftRect = slashLeft.GetComponent<RectTransform>();
+        var rightRect = slashRight.GetComponent<RectTransform>();
+
+        while (elapsed < slideIn)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = 1f - Mathf.Pow(1f - Mathf.Clamp01(elapsed / slideIn), 3f);
+            leftRect.anchoredPosition = new Vector2(Mathf.Lerp(-1400f, 0f, t), 0f);
+            rightRect.anchoredPosition = new Vector2(Mathf.Lerp(1400f, 0f, t), 0f);
+            overlayImg.color = new Color(0f, 0f, 0f, t * 0.45f);
+            yield return null;
+        }
+
+        // テキストフェードイン
+        elapsed = 0f;
+        const float textIn = 0.12f;
+        while (elapsed < textIn)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            cg.alpha = Mathf.Clamp01(elapsed / textIn);
+            textRect.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, cg.alpha);
+            yield return null;
+        }
+        cg.alpha = 1f;
+        textRect.localScale = Vector3.one;
+
+        yield return new WaitForSecondsRealtime(0.9f);
+
+        // フェードアウト
+        elapsed = 0f;
+        const float fadeOut = 0.22f;
+        while (elapsed < fadeOut)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = Mathf.Clamp01(elapsed / fadeOut);
+            var eased = t * t;
+            cg.alpha = 1f - eased;
+            leftRect.anchoredPosition = new Vector2(Mathf.Lerp(0f, -1400f, eased), 0f);
+            rightRect.anchoredPosition = new Vector2(Mathf.Lerp(0f, 1400f, eased), 0f);
+            overlayImg.color = new Color(0f, 0f, 0f, (1f - eased) * 0.45f);
+            yield return null;
+        }
+
+        Object.Destroy(overlay);
+        Object.Destroy(slashLeft);
+        Object.Destroy(slashRight);
+        Object.Destroy(textObj);
+    }
+
+    private static GameObject CreateCutInSlash(Canvas canvas, Color32 color, float side)
+    {
+        var slash = new GameObject("CutInSlash");
+        slash.transform.SetParent(canvas.transform, false);
+        var rect = slash.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 0.3f);
+        rect.anchorMax = new Vector2(1f, 0.7f);
+        rect.offsetMin = new Vector2(-200f, 0f);
+        rect.offsetMax = new Vector2(200f, 0f);
+        rect.anchoredPosition = new Vector2(side * 1400f, 0f);
+        rect.localRotation = Quaternion.Euler(0f, 0f, -12f);
+        var img = slash.AddComponent<Image>();
+        img.color = color;
+        return slash;
     }
 
     private static bool CanUseActiveSkill(PlayerRuntime player)
@@ -1092,6 +1414,7 @@ public class GameControl : MonoBehaviour
         }
 
         WriteEvent($"P{player.Number}: {eventDefinition.Title} - {choice.Label}");
+        TriggerChoiceStatDeltas(choice);
     }
 
     private static void HideEventModal()
@@ -1268,6 +1591,43 @@ public class GameControl : MonoBehaviour
 
         rect.localScale = Vector3.one;
         canvasGroup.alpha = 1f;
+    }
+
+    private static IEnumerator AnimatePanelOut(GameObject panel, float duration, float endScale)
+    {
+        if (panel == null)
+        {
+            yield break;
+        }
+
+        var rect = panel.GetComponent<RectTransform>();
+        if (rect == null)
+        {
+            panel.SetActive(false);
+            yield break;
+        }
+
+        var canvasGroup = panel.GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = panel.AddComponent<CanvasGroup>();
+        }
+
+        var elapsed = 0f;
+        var startScale = rect.localScale.x;
+        var startAlpha = canvasGroup.alpha;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            var eased = t * t; // Ease in
+            rect.localScale = Vector3.one * Mathf.Lerp(startScale, endScale, eased);
+            canvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, eased);
+            yield return null;
+        }
+
+        panel.SetActive(false);
     }
 
     private static void PopulateResultCards()
@@ -1564,6 +1924,11 @@ public class GameControl : MonoBehaviour
         for (var i = 0; i < rankedPlayers.Length; i++)
         {
             var player = rankedPlayers[i];
+            if (player == null)
+            {
+                continue;
+            }
+
             builder.AppendLine($"{i + 1}位  P{player.Number} {player.State.TypeName}  {GetCareerName(player)}");
             builder.AppendLine($"Score {CalculateScore(player.State)}   金 {player.State.Money} / IF {player.State.IfScore} / 心 {player.State.Mental} / 徳 {player.State.Virtue}");
             if (!string.IsNullOrEmpty(player.EliminationReason))
@@ -1597,7 +1962,7 @@ public class GameControl : MonoBehaviour
                 }
 
                 var score = players[i].Eliminated ? int.MinValue + i : CalculateScore(players[i].State);
-                if (score > bestScore)
+                if (bestIndex < 0 || score > bestScore)
                 {
                     bestScore = score;
                     bestIndex = i;
@@ -1840,8 +2205,8 @@ public class GameControl : MonoBehaviour
         public bool CanChoose(GradStudentState state)
         {
             return state != null
-                && state.Money >= RequiredMoney
-                && state.Virtue >= RequiredVirtue
+                && (RequiredMoney <= 0 || state.Money >= RequiredMoney)
+                && (RequiredVirtue <= 0 || state.Virtue >= RequiredVirtue)
                 && (!RequiresKind || state.Kind == RequiredKind);
         }
 
